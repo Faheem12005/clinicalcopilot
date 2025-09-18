@@ -8,7 +8,7 @@ from chromadb.utils import embedding_functions
 import uuid
 
 # --- CONFIG ---
-OPENAI_API_KEY = "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"
+OPENAI_API_KEY = "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"
 VECTOR_DB_DIR = "./patient_vectors"  # folder to persist vector DB
 
 # --- Initialize OpenAI client ---
@@ -76,12 +76,13 @@ def flatten_snapshot(snapshot: Dict) -> List[Dict]:
 
     # encounters
     for enc in snapshot.get("encounters", []):
-        enc_text = f"Encounter {enc.get('id')}: status {enc.get('status')}, type {', '.join(enc.get('type', []))}, from {enc.get('start')} to {enc.get('end')}"
+        enc_text = f"Encounter on {enc.get('date')}: type {', '.join(enc.get('type', []))}, provider {enc.get('provider')}"
         chunks.append({
             "text": enc_text,
             "type": "encounter",
             "id": enc.get("id") or str(uuid.uuid4())
         })
+
 
     return chunks
 
@@ -124,7 +125,7 @@ def main():
     index_snapshot(snapshot)
 
     # Optional test query
-    test_results = query_patient(snapshot.get("patient_id"), "tobacco usage")
+    test_results = query_patient(snapshot.get("patient_id"), "does patient have pain symptomns")
     print("Top retrievals:")
     for doc, score in zip(test_results['documents'][0], test_results['distances'][0]):
         print(f"- {doc} (score={score})")
