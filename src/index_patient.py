@@ -5,21 +5,24 @@ from pathlib import Path
 from typing import Dict, List
 import chromadb
 from chromadb.utils import embedding_functions
+import os
+from dotenv import load_dotenv
 
 # --- CONFIG ---
-OPENAI_API_KEY = "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"
+load_dotenv()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 VECTOR_DB_DIR = "./patient_vectors"
 
 # --- Chroma Init ---
 chroma_client = chromadb.PersistentClient(path=VECTOR_DB_DIR)
-embedding_fn = embedding_functions.OpenAIEmbeddingFunction(
-    api_key=OPENAI_API_KEY,
-    model_name="text-embedding-3-large"
-)
+# embedding_fn = embedding_functions.OpenAIEmbeddingFunction(
+#     api_key=OPENAI_API_KEY,
+#     model_name="text-embedding-3-large"
+# )
 
 collection = chroma_client.get_or_create_collection(
     name="patient_chunks",
-    embedding_function=embedding_fn # type: ignore
+    embedding_function=embedding_functions.DefaultEmbeddingFunction()# type: ignore
 )
 
 def flatten_snapshot(snapshot: Dict) -> List[Dict]:
@@ -34,12 +37,16 @@ def flatten_snapshot(snapshot: Dict) -> List[Dict]:
     })
     # observations
     for obs in snapshot.get("observations", []):
-        val = obs.get("value") if not isinstance(obs.get("value"), dict) else obs["value"].get("value") or obs["value"].get("text")
+        val = obs.get("value")
+        if isinstance(val, dict):
+            # Join key/value pairs like "Systolic = 112 mmHg, Diastolic = 90 mmHg"
+            val = ", ".join(f"{k}: {v}" for k, v in val.items())
         chunks.append({
             "text": f"Observation: {obs.get('code')} = {val} on {obs.get('date')}",
             "type": "observation",
             "id": obs.get("id") or str(uuid.uuid4())
         })
+
     # meds
     for med in snapshot.get("medications", []):
         chunks.append({
@@ -61,3 +68,10 @@ def index_snapshot(snapshot: Dict):
 if __name__ == "__main__":
     snapshot = json.load(open("patient_snapshot.json"))
     index_snapshot(snapshot)
+
+    chroma_client = chromadb.PersistentClient(path="./patient_vectors")
+    collection = chroma_client.get_or_create_collection("patient_chunks")
+
+    # See what’s inside
+    print("Collections:", chroma_client.list_collections())
+    print("Sample docs:", collection.peek())

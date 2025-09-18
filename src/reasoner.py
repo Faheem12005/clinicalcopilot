@@ -2,9 +2,10 @@ import os
 from google import genai
 import chromadb
 import requests
-
+from dotenv import load_dotenv
 # --- CONFIG ---
-GEMINI_API_KEY = ""
+load_dotenv()
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 VECTOR_DB_DIR = "./patient_vectors"
 PUBMED_API = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
 PUBMED_SUMMARY = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi"
@@ -21,9 +22,14 @@ def retrieve_patient_context(patient_id: str, query: str, top_k: int = 5):
     results = collection.query(
         query_texts=[query],
         n_results=top_k,
-        where={"patient_id": patient_id}
+        where={"patient_id": str(patient_id)}  # ensure string
     )
-    return results["documents"][0]
+    # Flatten documents list
+    docs = results.get("documents", [])
+    if docs and docs[0]:
+        return docs[0]  # list of docs for first query
+    return []
+
 
 def fetch_pubmed(query: str, max_results: int = 3):
     params = {"db": "pubmed", "term": query, "retmax": max_results, "retmode": "json"}
@@ -70,5 +76,5 @@ Keep it short, precise, and clinically useful.
 
 # --- Example ---
 if __name__ == "__main__":
-    result = reason("8c2d5e9b-0717-9616-beb9-21296a5b547d", "How should I manage the patient's chest pain?")
+    result = reason("8c2d5e9b-0717-9616-beb9-21296a5b547d", "blood pressure")
     print(result)
