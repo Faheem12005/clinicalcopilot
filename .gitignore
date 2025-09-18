@@ -1,4 +1,7 @@
 fhir
+patients_json
+patient_data
+clinicalcopilot/src/patient_data.json
 src/patient_snapshot.json
 src/patient_vectors
 .env

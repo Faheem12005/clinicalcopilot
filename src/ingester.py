@@ -1,167 +1,272 @@
+# fhir_ingester_extended.py
 import json
-from collections import defaultdict
+from typing import Dict, List, Any, Set
 
-def _format_value_from_element(elem) -> str:
-    """Return human-readable string for a FHIR observation element."""
-    if not isinstance(elem, dict):
-        return str(elem)
+class FHIRIngester:
+    """
+    Extended FHIR R4 Bundle ingester.
+    Extracts clinically relevant information from key FHIR resources,
+    removes duplicates, and outputs a simplified JSON structure.
+    """
 
-    if "valueQuantity" in elem:
-        q = elem["valueQuantity"]
-        val = q.get("value")
-        unit = q.get("unit") or q.get("code") or ""
-        return f"{val} {unit}".strip()
+    def __init__(self):
+        self.supported_resources = {
+            "Condition": self.extract_condition,
+            "Observation": self.extract_observation,
+            "MedicationRequest": self.extract_medication_request,
+            "Procedure": self.extract_procedure,
+            "AllergyIntolerance": self.extract_allergy_intolerance,
+            "DiagnosticReport": self.extract_diagnostic_report,
+            "Patient": self.extract_patient,
+            "Immunization": self.extract_immunization,
+            "Encounter": self.extract_encounter,
+            "CarePlan": self.extract_careplan,
+            "Claim": self.extract_claim
+        }
 
-    if "valueCodeableConcept" in elem:
-        vcc = elem["valueCodeableConcept"]
-        if vcc.get("text"):
-            return str(vcc.get("text"))
-        coding = vcc.get("coding", [])
-        if coding and isinstance(coding, list) and coding:
-            return coding[0].get("display") or coding[0].get("code") or str(coding[0])
-        return json.dumps(vcc)
+    def extract_all_patient_resources(self, bundle: Dict[str, Any]) -> Dict[str, List[Any]]:
+        """
+        Iterates through all entries in a FHIR Bundle and extracts simplified resources.
+        Uses sets to remove duplicates.
+        """
+        simplified_data = {
+            "conditions": set(),
+            "observations": set(),
+            "medications": set(),
+            "procedures": set(),
+            "allergies": set(),
+            "diagnostic_reports": set(),
+            "immunizations": set(),
+            "encounters": set(),
+            "careplans": set(),
+            "claims_diagnoses": set(),
+            "patient": []
+        }
 
-    if "valueCoding" in elem:
-        vc = elem["valueCoding"]
-        return vc.get("display") or vc.get("code") or str(vc)
-
-    for key in ("valueString", "valueBoolean", "valueDecimal", "valueInteger"):
-        if key in elem:
-            return str(elem.get(key))
-
-    if "value" in elem:
-        return str(elem.get("value"))
-
-    return json.dumps(elem)
-
-
-def extract_patient_snapshot_latest(bundle: dict) -> dict:
-    resources = defaultdict(list)
-    
-    # Organize resources
-    if bundle.get("resourceType") == "Bundle":
-        for entry in bundle.get("entry", []):
-            res = entry.get("resource", {})
-            if "resourceType" in res:
-                resources[res["resourceType"]].append(res)
-    else:
-        resources[bundle.get("resourceType", "Unknown")].append(bundle)
-    
-    # Demographics
-    patient_res = resources.get("Patient", [{}])[0]
-    extensions = {ext.get("url"): ext for ext in patient_res.get("extension", [])}
-
-    given_names = " ".join(patient_res.get("name", [{}])[0].get("given", []) or [])
-    family_name = patient_res.get("name", [{}])[0].get("family", "") or ""
-    full_name = f"{given_names} {family_name}".strip() or None
-
-    address_parts = []
-    for k in ["line", "city", "state", "postalCode", "country"]:
-        val = patient_res.get("address", [{}])[0].get(k)
-        if isinstance(val, list):
-            address_parts.append(" ".join([str(x) for x in val if x is not None]))
-        elif val:
-            address_parts.append(str(val))
-    address_str = ", ".join(address_parts) if address_parts else None
-
-    demographics = {
-        "name": full_name,
-        "gender": patient_res.get("gender"),
-        "birthDate": patient_res.get("birthDate"),
-        "address": address_str,
-        "phone": (patient_res.get("telecom", [{}])[0].get("value") if patient_res.get("telecom") else None),
-        "race": None,
-        "ethnicity": None
-    }
-    race_ext = extensions.get("http://hl7.org/fhir/us/core/StructureDefinition/us-core-race")
-    if race_ext:
-        for sub in race_ext.get("extension", []):
-            if sub.get("url") == "text" and sub.get("valueString"):
-                demographics["race"] = sub["valueString"]
-                break
-    eth_ext = extensions.get("http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity")
-    if eth_ext:
-        for sub in eth_ext.get("extension", []):
-            if sub.get("url") == "text" and sub.get("valueString"):
-                demographics["ethnicity"] = sub["valueString"]
-                break
-
-    # --- Latest encounters per type ---
-    latest_encounters = {}
-    for enc in resources.get("Encounter", []):
-        enc_types = [t.get("text") for t in enc.get("type", []) if t.get("text")]
-        date = enc.get("period", {}).get("start")
-        provider = enc.get("serviceProvider", {}).get("display")
-        
-        for t in enc_types:
-            if t not in latest_encounters or (date and date > latest_encounters[t]["date"]):
-                latest_encounters[t] = {"type": t, "date": date, "provider": provider}
-    encounters = list(latest_encounters.values())
-
-    # Observations (all retained)
-    observations = []
-    for obs in resources.get("Observation", []):
-        code = obs.get("code", {}).get("text") or obs.get("code", {}).get("coding", [{}])[0].get("display")
-        date = obs.get("effectiveDateTime") or obs.get("issued")
-        value = None
-
-        if "component" in obs and isinstance(obs["component"], list) and obs["component"]:
-            components = {}
-            for comp in obs["component"]:
-                comp_code = comp.get("code", {}).get("text") or comp.get("code", {}).get("coding", [{}])[0].get("display") or "component"
-                comp_val = _format_value_from_element(comp)
-                components[comp_code] = comp_val
-            value = components
-        else:
-            raw_value = None
-            for key in ["valueQuantity", "valueCodeableConcept", "valueString", "valueBoolean", "valueDecimal", "valueInteger", "valueCoding"]:
-                if key in obs:
-                    raw_value = _format_value_from_element({key: obs[key]})
-                    break
-            if raw_value and isinstance(raw_value, str) and (";" in raw_value or "?" in raw_value):
-                qa_dict = {}
-                parts = [p.strip() for p in raw_value.split(";") if p.strip()]
-                for p in parts:
-                    if ": " in p:
-                        q, a = p.split(": ", 1)
-                        qa_dict[q.strip()] = a.strip()
-                value = qa_dict if qa_dict else raw_value
+        entries = bundle.get("entry", [])
+        for entry in entries:
+            resource = entry.get("resource", {})
+            resource_type = resource.get("resourceType")
+            if resource_type in self.supported_resources:
+                try:
+                    simplified = self.supported_resources[resource_type](resource)
+                    if simplified:
+                        key = self.map_resource_to_key(resource_type)
+                        # Handle patient separately (list)
+                        if key == "patient":
+                            simplified_data[key].append(simplified)
+                        # For other types, use sets to deduplicate
+                        elif isinstance(simplified, (str, tuple)):
+                            simplified_data[key].add(simplified)
+                        elif isinstance(simplified, list):
+                            simplified_data[key].update(simplified)
+                        else:
+                            simplified_data[key].add(tuple(simplified.items()))
+                except Exception as e:
+                    print(f"Warning: Failed to extract {resource_type}: {e}")
             else:
-                value = raw_value
+                continue
 
-        observations.append({
-            "id": obs.get("id"),
-            "code": code,
-            "date": date,
-            "status": obs.get("status"),
-            "value": value
-        })
+        # Convert sets back to lists for JSON serialization
+        for k, v in simplified_data.items():
+            if isinstance(v, set):
+                # Convert tuple back to dict if needed
+                new_list = []
+                for item in v:
+                    if isinstance(item, tuple):
+                        new_list.append(dict(item))
+                    else:
+                        new_list.append(item)
+                simplified_data[k] = new_list
 
-    # Medications (all retained)
-    medications = []
-    for med in resources.get("MedicationRequest", []):
-        med_name = med.get("medicationCodeableConcept", {}).get("text") or (med.get("medicationReference") or {}).get("display")
-        medications.append({"medication": med_name, "status": med.get("status")})
+        return simplified_data
 
-    snapshot = {
-        "patient_id": patient_res.get("id"),
-        "demographics": demographics,
-        "encounters": encounters,
-        "observations": observations,
-        "medications": medications
-    }
+    @staticmethod
+    def map_resource_to_key(resource_type: str) -> str:
+        mapping = {
+            "Condition": "conditions",
+            "Observation": "observations",
+            "MedicationRequest": "medications",
+            "Procedure": "procedures",
+            "AllergyIntolerance": "allergies",
+            "DiagnosticReport": "diagnostic_reports",
+            "Patient": "patient",
+            "Immunization": "immunizations",
+            "Encounter": "encounters",
+            "CarePlan": "careplans",
+            "Claim": "claims_diagnoses"
+        }
+        return mapping.get(resource_type, "unknown")
 
-    return snapshot
+    # ------------------- Resource-specific extractors -------------------
+
+    def extract_condition(self, resource: Dict[str, Any]) -> str:
+        code = resource.get("code", {}).get("text")
+        return code
+
+    def extract_observation(self, resource: Dict[str, Any]) -> str:
+        # Keep value and unit for uniqueness
+        value = None
+        unit = None
+        if "valueQuantity" in resource:
+            value = resource["valueQuantity"].get("value")
+            unit = resource["valueQuantity"].get("unit")
+        elif "valueString" in resource:
+            value = resource.get("valueString")
+        elif "valueCodeableConcept" in resource:
+            value = resource["valueCodeableConcept"].get("text")
+        code = resource.get("code", {}).get("text")
+        if value:
+            return f"{code}: {value} {unit if unit else ''}".strip()
+        return code
+
+    def extract_medication_request(self, resource: Dict[str, Any]) -> str:
+        med = resource.get("medicationCodeableConcept", {}).get("text")
+        return med
+
+    def extract_procedure(self, resource: Dict[str, Any]) -> str:
+        return resource.get("code", {}).get("text")
+
+    def extract_allergy_intolerance(self, resource: Dict[str, Any]) -> str:
+        return resource.get("code", {}).get("text")
+
+    def extract_diagnostic_report(self, resource: Dict[str, Any]) -> str:
+        return resource.get("code", {}).get("text")
+
+    def extract_patient(self, resource: Dict[str, Any]) -> Dict[str, Any]:
+        name_obj = resource.get("name", [{}])[0]
+        name = None
+        if name_obj:
+            name = " ".join(name_obj.get("given", []) + [name_obj.get("family", "")])
+        return {"name": name, "gender": resource.get("gender"), "birthDate": resource.get("birthDate")}
+
+    def extract_immunization(self, resource: Dict[str, Any]) -> str:
+        return resource.get("vaccineCode", {}).get("text")
+
+    def extract_encounter(self, resource: Dict[str, Any]) -> str:
+        # Keep encounter type as unique identifier
+        type_text = resource.get("type", [{}])[0].get("text")
+        return type_text
+
+    def extract_careplan(self, resource: Dict[str, Any]) -> str:
+        # Keep only the summary or title
+        return resource.get("description") or resource.get("title") # type: ignore
+
+    def extract_claim(self, resource: Dict[str, Any]) -> List[str]:
+        # Extract diagnoses from claim items
+        diagnoses = set()
+        for item in resource.get("diagnosis", []):
+            code = item.get("diagnosisCodeableConcept", {}).get("text")
+            if code:
+                diagnoses.add(code)
+        return list(diagnoses)
 
 
-# Example usage
-with open("../fhir/Zelda766_Ernser583_8c2d5e9b-0717-9616-beb9-21296a5b547d.json") as f:
-    bundle = json.load(f)
+def extract_patient_data(file_path: str) -> Dict[str, Any]:
+    """
+    Extract patient data from a FHIR bundle file
+    
+    Args:
+        file_path: Path to the FHIR bundle JSON file
+        
+    Returns:
+        Dictionary containing extracted patient data
+    """
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            bundle = json.load(f)
+            
+        ingester = FHIRIngester()
+        simplified_data = ingester.extract_all_patient_resources(bundle)
+        
+        # Extract patient ID from the bundle
+        patient_id = None
+        entries = bundle.get("entry", [])
+        for entry in entries:
+            resource = entry.get("resource", {})
+            if resource.get("resourceType") == "Patient":
+                patient_id = resource.get("id")
+                break
+        
+        # Add the patient ID to the simplified data
+        if patient_id:
+            simplified_data["patient_id"] = patient_id
+            
+        return simplified_data
+    except Exception as e:
+        print(f"Error extracting data from {file_path}: {str(e)}")
+        return {}
 
-import pprint
-snapshot = extract_patient_snapshot_latest(bundle)
+def process_fhir_directory(fhir_dir: str, output_dir: str) -> None:
+    """
+    Process all FHIR files in a directory and create individual JSON files
+    
+    Args:
+        fhir_dir: Path to the directory containing FHIR JSON files
+        output_dir: Path to the directory where individual patient files will be saved
+    """
+    import os
+    
+    # Create output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Get all JSON files in the FHIR directory
+    fhir_files = [os.path.join(fhir_dir, f) for f in os.listdir(fhir_dir) 
+                 if f.endswith('.json') and os.path.isfile(os.path.join(fhir_dir, f))]
+    
+    print(f"Found {len(fhir_files)} FHIR files to process.")
+    
+    # Process each file
+    for i, file_path in enumerate(fhir_files):
+        try:
+            # Extract the patient name from the filename (assuming format like "Name_Surname_ID.json")
+            file_name = os.path.basename(file_path)
+            name_parts = file_name.split('_')
+            if len(name_parts) >= 2:
+                patient_name = f"{name_parts[0]}_{name_parts[1]}"
+            else:
+                patient_name = f"patient_{i}"
+            
+            # Extract the data
+            patient_data = extract_patient_data(file_path)
+            
+            if not patient_data:
+                print(f"Skipping {file_name} due to extraction errors.")
+                continue
+                
+            # Create output file path
+            patient_id = patient_data.get("patient_id", f"unknown_{i}")
+            output_file = os.path.join(output_dir, f"{patient_name}_{patient_id}.json")
+            
+            # Save the data
+            with open(output_file, "w", encoding="utf-8") as f:
+                json.dump(patient_data, f, indent=2)
+                
+            if i % 10 == 0:
+                print(f"Processed {i+1}/{len(fhir_files)} files...")
+                
+        except Exception as e:
+            print(f"Error processing {file_path}: {str(e)}")
+    
+    print(f"Completed. Processed {len(fhir_files)} files. Results saved to {output_dir}")
 
-with open("patient_snapshot.json", "w") as f:
-    json.dump(snapshot, f, indent=4)
+if __name__ == "__main__":
+    import os
+    import sys
+    
+    # Default paths
+    fhir_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "fhir"))
+    output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "patient_data"))
+    
+    # Check command line arguments
+    if len(sys.argv) > 1:
+        fhir_dir = sys.argv[1]
+    if len(sys.argv) > 2:
+        output_dir = sys.argv[2]
+    
+    print(f"Processing FHIR files from: {fhir_dir}")
+    print(f"Saving patient data to: {output_dir}")
+    
+    # Process the files
+    process_fhir_directory(fhir_dir, output_dir)
 
-pprint.pprint(snapshot)
