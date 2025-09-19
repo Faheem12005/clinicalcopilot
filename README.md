@@ -10,6 +10,22 @@
 
 <a href="https://youtu.be/m38G3E9dxV8">Watch a Demo!</a>
 
+At a Glance
+
+🌟Landing Page<br>
+<br>
+<img width="1346" height="645" alt="Screenshot 2025-09-19 093731" src="https://github.com/user-attachments/assets/842f1c28-e364-41ed-8e74-467ffc805fb9" />
+<br>
+🌟Upload FHIR's or JSON<br>
+<br>
+<img width="1335" height="648" alt="Screenshot 2025-09-19 094120" src="https://github.com/user-attachments/assets/a0c643b0-8b65-434f-bf8b-27f903cf9933" />
+<br>
+🌟Ask AI for Smarter Clinical Decisions<br>
+<br>
+<img width="1339" height="638" alt="image" src="https://github.com/user-attachments/assets/c34bd059-e6fe-4561-88f5-e76b7c77fdd7" />
+
+
+
 ---
 
 ## 🌟 Features
