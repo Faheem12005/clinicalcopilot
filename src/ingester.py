@@ -81,6 +81,23 @@ class FHIRIngester:
 
         return simplified_data
 
+    def process_fhir_data(self, fhir_data: Dict[str, Any]) -> Dict[str, List[Any]]:
+        """
+        Process FHIR data - handles both Bundle format and pre-processed format.
+        """
+        # Check if this is already processed data (has our expected keys)
+        expected_keys = {"conditions", "observations", "medications", "procedures", "allergies"}
+        if any(key in fhir_data for key in expected_keys):
+            # Data is already in simplified format, return as-is
+            return fhir_data
+        
+        # Check if this is a FHIR Bundle
+        if "entry" in fhir_data and isinstance(fhir_data["entry"], list):
+            return self.extract_all_patient_resources(fhir_data)
+        
+        # If it's neither, try to treat it as a bundle anyway
+        return self.extract_all_patient_resources(fhir_data)
+
     @staticmethod
     def map_resource_to_key(resource_type: str) -> str:
         mapping = {

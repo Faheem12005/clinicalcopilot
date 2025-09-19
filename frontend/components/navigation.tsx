@@ -53,7 +53,7 @@ export function Navigation() {
 
       {/* Mobile Navigation */}
       <nav className="lg:hidden flex items-center justify-between px-4 py-3 bg-card/50 backdrop-blur-sm border-b border-border/50">
-        <Link href="/dashboard" className="flex items-center gap-2">
+        <Link href="/patients" className="flex items-center gap-2">
           <div className="p-2 bg-primary/10 rounded-lg">
             <Brain className="h-5 w-5 text-primary" />
           </div>
