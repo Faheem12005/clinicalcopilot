@@ -2,3 +2,4 @@ fhir
 src/patient_snapshot.json
 src/patient_vectors
 .env
+frontend

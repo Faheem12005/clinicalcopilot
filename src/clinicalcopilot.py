@@ -165,5 +165,6 @@ if __name__ == "__main__":
             print("👋 Exiting Clinical Copilot.")
             break
         answer = answer_query_gemini(patient_id_idx, query)
-        print(f"\n💡 Answer: {answer}\n")
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, pipeline
+        print("\n💡 Answer:\n")
+        print(json.dumps(answer, indent=2))
+        print()
