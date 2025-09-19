@@ -8,7 +8,7 @@
 
 **An AI-powered clinical decision support system that helps healthcare professionals analyze patient data, search medical records, and receive evidence-based recommendations.**
 
-![Clinical Copilot Demo](public/placeholder-logo.png)
+<a href="https://youtu.be/m38G3E9dxV8">Watch a Demo!</a>
 
 ---
 
