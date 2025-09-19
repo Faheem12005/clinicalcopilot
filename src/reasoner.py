@@ -76,5 +76,5 @@ Keep it short, precise, and clinically useful.
 
 # --- Example ---
 if __name__ == "__main__":
-    result = reason("8c2d5e9b-0717-9616-beb9-21296a5b547d", "blood pressure")
+    result = reason("8c2d5e9b-0717-9616-beb9-21296a5b547d", "patient smoke")
     print(result)
