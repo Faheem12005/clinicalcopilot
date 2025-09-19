@@ -57,11 +57,16 @@ export default function CopilotPage() {
       
       const result: SearchResponse = await response.json()
       
-      // Remove duplicates based on text content and limit to top 3
+      // Remove duplicates based on text content, filter out "patient" type, and limit to top 3
       const uniqueResults: SearchResult[] = []
       const seenTexts = new Set<string>()
       
       for (const resultItem of result.results) {
+        // Skip results with type "patient"
+        if (resultItem.type.toLowerCase() === "patient") {
+          continue
+        }
+        
         const normalizedText = resultItem.text.toLowerCase().trim()
         if (!seenTexts.has(normalizedText) && uniqueResults.length < 3) {
           seenTexts.add(normalizedText)
@@ -121,14 +126,19 @@ export default function CopilotPage() {
               Back to Upload
             </Button>
             
-            {/* Patient Info Display */}
-            <Card className="border-primary/20 bg-primary/5">
-              <CardContent className="p-3">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-primary" />
-                  <div className="text-sm">
-                    <span className="font-medium">Abdul218 Harris789</span>
-                    <span className="text-muted-foreground ml-2">Male, DOB: 1952-12-05</span>
+            {/* Patient Profile Card */}
+            <Card className="border-primary/30 bg-gradient-to-r from-primary/10 to-primary/5 shadow-md min-w-[280px]">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-primary/20 rounded-lg">
+                    <User className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg text-foreground">Abdul218 Harris789</h3>
+                    <div className="flex flex-col text-sm text-muted-foreground mt-1">
+                      <span>Male • 72 years old</span>
+                      <span>DOB: Dec 05, 1952</span>
+                    </div>
                   </div>
                 </div>
               </CardContent>
