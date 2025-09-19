@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Brain, Search, FileText, ArrowLeft } from "lucide-react"
+import { Brain, Search, FileText, ArrowLeft, User } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 interface SearchResult {
@@ -56,7 +56,20 @@ export default function CopilotPage() {
       }
       
       const result: SearchResponse = await response.json()
-      setSearchResults(result.results)
+      
+      // Remove duplicates based on text content and limit to top 3
+      const uniqueResults: SearchResult[] = []
+      const seenTexts = new Set<string>()
+      
+      for (const resultItem of result.results) {
+        const normalizedText = resultItem.text.toLowerCase().trim()
+        if (!seenTexts.has(normalizedText) && uniqueResults.length < 3) {
+          seenTexts.add(normalizedText)
+          uniqueResults.push(resultItem)
+        }
+      }
+      
+      setSearchResults(uniqueResults)
       setHasSearched(true)
       
     } catch (error) {
@@ -98,7 +111,7 @@ export default function CopilotPage() {
       
       <div className="container mx-auto p-6">
         <div className="mb-8">
-          <div className="flex items-center gap-4 mb-4">
+          <div className="flex items-center justify-between mb-4">
             <Button
               variant="ghost"
               onClick={() => router.push('/patients')}
@@ -107,7 +120,21 @@ export default function CopilotPage() {
               <ArrowLeft className="w-4 h-4" />
               Back to Upload
             </Button>
+            
+            {/* Patient Info Display */}
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-primary" />
+                  <div className="text-sm">
+                    <span className="font-medium">Abdul218 Harris789</span>
+                    <span className="text-muted-foreground ml-2">Male, DOB: 1952-12-05</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
+          
           <div className="flex items-center gap-3 mb-2">
             <Brain className="w-8 h-8 text-primary" />
             <h1 className="text-3xl font-bold">AI Clinical Copilot</h1>
@@ -149,8 +176,7 @@ export default function CopilotPage() {
               {[
                 "What conditions does the patient have?",
                 "Show me all medications",
-                "Recent lab results",
-                "Patient demographics"
+                "Recent lab results"
               ].map((example) => (
                 <Button
                   key={example}
@@ -206,17 +232,19 @@ export default function CopilotPage() {
                   {searchResults.map((result) => (
                     <Card key={result.id} className="border-l-4 border-l-primary/30">
                       <CardContent className="p-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <Badge className={getTypeColor(result.type)}>
-                              {result.type}
-                            </Badge>
-                            <span className={`text-sm ${getRelevanceColor(result.relevance)}`}>
-                              {(result.relevance * 100).toFixed(1)}% match
-                            </span>
+                        <div className="flex items-start gap-3 mb-3">
+                          <div className="p-2 bg-primary/10 rounded-full">
+                            <User className="h-5 w-5 text-primary" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge className={getTypeColor(result.type)}>
+                                {result.type}
+                              </Badge>
+                            </div>
+                            <p className="text-sm leading-relaxed">{result.text}</p>
                           </div>
                         </div>
-                        <p className="text-sm leading-relaxed">{result.text}</p>
                       </CardContent>
                     </Card>
                   ))}

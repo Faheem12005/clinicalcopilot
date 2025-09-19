@@ -68,8 +68,8 @@ export default function LoginPage() {
                   <Brain className="h-8 w-8 text-primary" />
                 </div>
                 <div>
-                  <h1 className="text-4xl font-bold text-foreground">CaseSense</h1>
-                  <p className="text-xl text-muted-foreground">Smarter Clinical Decisions with AI</p>
+                  <h1 className="text-4xl font-bold text-white">CaseSense</h1>
+                  <p className="text-xl text-gray-200">Smarter Clinical Decisions with AI</p>
                 </div>
               </div>
             </div>
@@ -77,46 +77,46 @@ export default function LoginPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div
               className="flex items-center gap-3 p-4 rounded-lg backdrop-blur-sm animate-fade-in 
-             border border-transparent hover:border-chart-3 transition-colors"
+             border border-transparent hover:border-primary/30 transition-colors"
               style={{ animationDelay: "0.4s" }}
               >
                 <Activity className="h-6 w-6 text-primary" />
                 <div>
-                  <h3 className="font-semibold">Real-time Analysis</h3>
-                  <p className="text-sm text-muted-foreground">Instant patient insights</p>
+                  <h3 className="font-semibold text-white">Real-time Analysis</h3>
+                  <p className="text-sm text-gray-300">Instant patient insights</p>
                 </div>
               </div>
               <div
               className="flex items-center gap-3 p-4 rounded-lg backdrop-blur-sm animate-fade-in 
-             border border-transparent hover:border-chart-3 transition-colors"
+             border border-transparent hover:border-primary/30 transition-colors"
               style={{ animationDelay: "0.4s" }}
               >
                 <Shield className="h-6 w-6 text-primary" />
                 <div>
-                  <h3 className="font-semibold">HIPAA Compliant</h3>
-                  <p className="text-sm text-muted-foreground">Secure & private</p>
+                  <h3 className="font-semibold text-white">HIPAA Compliant</h3>
+                  <p className="text-sm text-gray-300">Secure & private</p>
                 </div>
               </div>
               <div
               className="flex items-center gap-3 p-4 rounded-lg backdrop-blur-sm animate-fade-in 
-             border border-transparent hover:border-chart-3 transition-colors"
+             border border-transparent hover:border-primary/30 transition-colors"
               style={{ animationDelay: "0.4s" }}
               >
                 <Brain className="h-6 w-6 text-primary" />
                 <div>
-                  <h3 className="font-semibold">AI-Powered</h3>
-                  <p className="text-sm text-muted-foreground">Evidence-based recommendations</p>
+                  <h3 className="font-semibold text-white">AI-Powered</h3>
+                  <p className="text-sm text-gray-300">Evidence-based recommendations</p>
                 </div>
               </div>
               <div
               className="flex items-center gap-3 p-4 rounded-lg backdrop-blur-sm animate-fade-in 
-             border border-transparent hover:border-chart-3 transition-colors"
+             border border-transparent hover:border-primary/30 transition-colors"
               style={{ animationDelay: "0.4s" }}
               >
                 <Users className="h-6 w-6 text-primary" />
                 <div>
-                  <h3 className="font-semibold">Collaborative</h3>
-                  <p className="text-sm text-muted-foreground">Team-based care</p>
+                  <h3 className="font-semibold text-white">Collaborative</h3>
+                  <p className="text-sm text-gray-300">Team-based care</p>
                 </div>
               </div>
             </div>
@@ -125,10 +125,10 @@ export default function LoginPage() {
 
         {/* Right side - Login Form */}
         <div className="flex justify-center animate-scale-in">
-          <Card className="w-full max-w-md shadow-xl border-0 bg-black/50">
+          <Card className="w-full max-w-md shadow-xl border-0 bg-black/50 backdrop-blur-sm">
             <CardHeader className="space-y-2 text-center">
-              <CardTitle className="text-2xl">Welcome Back</CardTitle>
-              <CardDescription>Sign in to access your clinical dashboard</CardDescription>
+              <CardTitle className="text-2xl text-white">Welcome Back</CardTitle>
+              <CardDescription className="text-gray-300">Sign in to access your clinical dashboard</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
@@ -163,21 +163,21 @@ export default function LoginPage() {
               <div className="space-y-3">
                 <Button
                   onClick={handleLogin}
-                  className="w-full h-11 bg-chart-1 text-chart-3 hover:bg-primary/90 hover:text-chart-1"
+                  className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   Sign In
                 </Button>
                 <Button
                   onClick={handleGuestAccess}
                   variant="outline"
-                  className="w-full h-11 border-primary/20 hover:bg-primary/5 bg-transparent"
+                  className="w-full h-11 border-white/20 hover:bg-white/5 bg-transparent text-white"
                 >
                   Continue as Guest
                 </Button>
               </div>
 
               <div className="text-center">
-                <p className="text-sm text-muted-foreground">Prototype - Not for clinical use</p>
+                <p className="text-sm text-gray-400">Prototype - Not for clinical use</p>
               </div>
             </CardContent>
           </Card>

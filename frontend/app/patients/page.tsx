@@ -18,33 +18,57 @@ export default function PatientsPage() {
   const router = useRouter()
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('File select triggered')
     const file = event.target.files?.[0]
-    if (file && file.type === "application/json") {
-      setSelectedFile(file)
-      setUploadSuccess(false)
+    console.log('Selected file:', file)
+    
+    if (file) {
+      console.log('File type:', file.type)
+      console.log('File name:', file.name)
+      
+      // Accept both application/json and files with .json extension
+      if (file.type === "application/json" || file.name.toLowerCase().endsWith('.json')) {
+        setSelectedFile(file)
+        setUploadSuccess(false)
+        console.log('File accepted')
+      } else {
+        console.log('File rejected - not JSON')
+        alert("Please select a valid JSON file (.json extension)")
+      }
     } else {
-      alert("Please select a valid JSON file")
+      console.log('No file selected')
     }
   }
 
   const handleFileUpload = async () => {
+    console.log('Upload button clicked')
+    console.log('Selected file:', selectedFile)
+    
     if (!selectedFile) {
       alert("Please select a JSON file first")
       return
     }
 
     setIsUploading(true)
+    console.log('Starting upload...')
+    
     try {
       const formData = new FormData()
       formData.append('file', selectedFile)
+      
+      console.log('Sending request to:', "http://127.0.0.1:5000/api/upload-json")
       
       const response = await fetch("http://127.0.0.1:5000/api/upload-json", {
         method: "POST",
         body: formData,
       })
 
+      console.log('Response status:', response.status)
+      console.log('Response ok:', response.ok)
+
       if (!response.ok) {
         const errorData = await response.json()
+        console.error('Upload error:', errorData)
         throw new Error(errorData.error || `Server error: ${response.status}`)
       }
       
@@ -57,6 +81,7 @@ export default function PatientsPage() {
       alert("Error uploading file: " + (error as Error).message)
     } finally {
       setIsUploading(false)
+      console.log('Upload finished')
     }
   }
 
@@ -129,7 +154,10 @@ export default function PatientsPage() {
                 <div className="flex gap-4">
                   <Button 
                     variant={uploadMethod === 'file' ? 'default' : 'outline'}
-                    onClick={() => setUploadMethod('file')}
+                    onClick={() => {
+                      console.log('Setting upload method to file')
+                      setUploadMethod('file')
+                    }}
                     className="flex-1"
                   >
                     <Upload className="w-4 h-4 mr-2" />
@@ -137,12 +165,19 @@ export default function PatientsPage() {
                   </Button>
                   <Button 
                     variant={uploadMethod === 'text' ? 'default' : 'outline'}
-                    onClick={() => setUploadMethod('text')}
+                    onClick={() => {
+                      console.log('Setting upload method to text')
+                      setUploadMethod('text')
+                    }}
                     className="flex-1"
                   >
                     <FileJson className="w-4 h-4 mr-2" />
                     Paste JSON
                   </Button>
+                </div>
+                
+                <div className="text-sm text-center text-muted-foreground">
+                  Current method: {uploadMethod}
                 </div>
               </CardContent>
             </Card>
@@ -156,24 +191,53 @@ export default function PatientsPage() {
                     Select a JSON file containing your patient data
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
-                    <FileJson className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">
-                        Click to select a JSON file or drag and drop
+                <CardContent className="space-y-6">
+                  <div className="border-2 border-dashed border-border rounded-lg p-12 text-center hover:border-primary/50 transition-colors">
+                    <FileJson className="w-16 h-16 mx-auto text-muted-foreground mb-6" />
+                    <div className="space-y-4">
+                      <p className="text-lg font-medium text-foreground">
+                        Upload JSON File
                       </p>
-                      <Input
-                        type="file"
-                        accept=".json"
-                        onChange={handleFileSelect}
-                        className="max-w-xs mx-auto"
-                      />
+                      <p className="text-sm text-muted-foreground">
+                        Click the button below to select your JSON file
+                      </p>
+                      
+                      <div className="flex justify-center">
+                        <label htmlFor="file-upload" className="cursor-pointer">
+                          <Button 
+                            variant="outline" 
+                            className="relative" 
+                            type="button"
+                            onClick={() => {
+                              console.log('Choose File button clicked')
+                              // Trigger the file input
+                              document.getElementById('file-upload')?.click()
+                            }}
+                          >
+                            <Upload className="w-4 h-4 mr-2" />
+                            Choose File
+                          </Button>
+                        </label>
+                        <input
+                          id="file-upload"
+                          type="file"
+                          accept=".json,application/json"
+                          onChange={handleFileSelect}
+                          className="hidden"
+                          onClick={() => console.log('File input clicked')}
+                        />
+                      </div>
+                      
+                      {!selectedFile && (
+                        <p className="text-xs text-muted-foreground">
+                          No file chosen
+                        </p>
+                      )}
                     </div>
                   </div>
                   
                   {selectedFile && (
-                    <div className="p-4 bg-muted rounded-lg">
+                    <div className="p-4 bg-muted rounded-lg text-center">
                       <p className="text-sm font-medium">Selected file:</p>
                       <p className="text-sm text-muted-foreground">{selectedFile.name}</p>
                       <p className="text-xs text-muted-foreground">
@@ -182,13 +246,16 @@ export default function PatientsPage() {
                     </div>
                   )}
                   
-                  <Button 
-                    onClick={handleFileUpload} 
-                    disabled={!selectedFile || isUploading}
-                    className="w-full"
-                  >
-                    {isUploading ? "Uploading and Indexing..." : "Upload and Index Data"}
-                  </Button>
+                  <div className="flex justify-center">
+                    <Button 
+                      onClick={handleFileUpload} 
+                      disabled={!selectedFile || isUploading}
+                      className="w-full max-w-sm"
+                      size="lg"
+                    >
+                      {isUploading ? "Uploading and Indexing..." : "Upload and Index Data"}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ) : (
@@ -208,13 +275,15 @@ export default function PatientsPage() {
                     rows={12}
                     className="font-mono text-sm"
                   />
-                  <Button 
-                    onClick={handleTextUpload} 
-                    disabled={!fhirData.trim() || isUploading}
-                    className="w-full"
-                  >
-                    {isUploading ? "Uploading and Indexing..." : "Upload and Index Data"}
-                  </Button>
+                  <div className="flex justify-center">
+                    <Button 
+                      onClick={handleTextUpload} 
+                      disabled={!fhirData.trim() || isUploading}
+                      className="w-full max-w-xs"
+                    >
+                      {isUploading ? "Uploading and Indexing..." : "Upload and Index Data"}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             )}
